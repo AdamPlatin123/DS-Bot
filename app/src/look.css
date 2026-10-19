@@ -1,48 +1,71 @@
 /* Prototype looks for the frameless window, scoped by html[data-ds-bot-look] which the
    preload sets. Only theme variables; the conversation column stays opaque. */
 
-/* The caption band is the frame's ::before layer; paint it translucent too so the top
-   strip frosts with the sidebar. The caption buttons keep the opaque measured fill —
-   Windows ignores the alpha in the overlay color, so transparency there is useless. */
-html[data-ds-bot-look="mica"] div[class*="_frame"]:has([class*="_sidebarCol"])::before,
-html[data-ds-bot-look="acrylic"] div[class*="_frame"]:has([class*="_sidebarCol"])::before,
-html[data-ds-bot-look="glass"] div[class*="_frame"]:has([class*="_sidebarCol"])::before {
-  background-color: color-mix(in srgb, var(--dsw-specific-sidebar-fill) 45%, transparent) !important;
+/* The caption buttons sit on the conversation column, so the probe measures that fill —
+   Windows ignores the alpha in the overlay color, an opaque match is the only answer. */
+html[data-ds-bot-look="mica"],
+html[data-ds-bot-look="acrylic"],
+html[data-ds-bot-look="glass"] {
+  --ds-bot-caption-fill: var(--dsw-alias-bg-base, var(--bt-main));
 }
 
-/* The page, the outer frame (which also paints the caption band) and the sidebar column
-   shell go transparent so the desktop material shows through. */
-html[data-ds-bot-look="mica"] body,
-html[data-ds-bot-look="acrylic"] body,
-html[data-ds-bot-look="glass"] body,
+/* The outer frame lifts both columns to the window's top edge; its ::before is the
+   caption-band drag layer and stays above everything there but paints nothing. */
 html[data-ds-bot-look="mica"] div[class*="_frame"]:has([class*="_sidebarCol"]),
 html[data-ds-bot-look="acrylic"] div[class*="_frame"]:has([class*="_sidebarCol"]),
 html[data-ds-bot-look="glass"] div[class*="_frame"]:has([class*="_sidebarCol"]),
+html[data-ds-bot-look="mica"] body,
+html[data-ds-bot-look="acrylic"] body,
+html[data-ds-bot-look="glass"] body {
+  background-color: transparent !important;
+}
+html[data-ds-bot-look="mica"] div[class*="_frame"]:has([class*="_sidebarCol"]),
+html[data-ds-bot-look="acrylic"] div[class*="_frame"]:has([class*="_sidebarCol"]),
+html[data-ds-bot-look="glass"] div[class*="_frame"]:has([class*="_sidebarCol"]) {
+  padding-top: 0 !important;
+}
+html[data-ds-bot-look="mica"] div[class*="_frame"]:has([class*="_sidebarCol"])::before,
+html[data-ds-bot-look="acrylic"] div[class*="_frame"]:has([class*="_sidebarCol"])::before,
+html[data-ds-bot-look="glass"] div[class*="_frame"]:has([class*="_sidebarCol"])::before {
+  background: transparent !important;
+}
+
+/* The sidebar column frosts with the theme's fill over the desktop material for the full
+   window height, band included; its own surface goes transparent so the coat is one. */
 html[data-ds-bot-look="mica"] div[class*="_sidebarCol"],
 html[data-ds-bot-look="acrylic"] div[class*="_sidebarCol"],
 html[data-ds-bot-look="glass"] div[class*="_sidebarCol"] {
-  background-color: transparent !important;
+  padding-top: var(--dsh-windows-titlebar-height) !important;
+  background-color: color-mix(in srgb, var(--dsw-specific-sidebar-fill) 45%, transparent) !important;
 }
-
-/* One translucent coat on the sidebar's own surface — like DSH's macOS sidebar over
-   vibrancy — so the material frosts through with the theme's fill. */
 html[data-ds-bot-look="mica"] div[class*="_sidebarCol"] div[class*="_root"],
 html[data-ds-bot-look="acrylic"] div[class*="_sidebarCol"] div[class*="_root"],
 html[data-ds-bot-look="glass"] div[class*="_sidebarCol"] div[class*="_root"] {
-  background-color: color-mix(in srgb, var(--dsw-specific-sidebar-fill) 45%, transparent) !important;
+  background-color: transparent !important;
+}
+
+/* The conversation column reaches the top edge opaque — the caption buttons stand on its
+   fill; the padding keeps its content below the band and the top-left corner rounded. */
+html[data-ds-bot-look="mica"] div[class*="_centerCol"],
+html[data-ds-bot-look="acrylic"] div[class*="_centerCol"],
+html[data-ds-bot-look="glass"] div[class*="_centerCol"] {
+  padding-top: var(--dsh-windows-titlebar-height) !important;
+  background-color: var(--dsw-alias-bg-base, var(--bt-main)) !important;
 }
 
 /* 'glass': liquid-glass floating surfaces on top of the acrylic base. The chat capsule and
-   the composer card sit over the scroll area, so their fill, blur and specular edge read
+   the composer card sit over the scroll area, so their fill, blur, rim and sheen read
    against the content that slides beneath them. */
 html[data-ds-bot-look="glass"] .bt-pill,
 html[data-ds-bot-look="glass"] div[class*="_composerStack"] div[class*="_card"] {
-  background-color: color-mix(in srgb, var(--bt-card) 55%, transparent) !important;
-  backdrop-filter: blur(18px) saturate(1.5);
+  background-color: color-mix(in srgb, var(--bt-card) 38%, transparent) !important;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 60%);
+  backdrop-filter: blur(24px) saturate(1.8);
   border: 0.5px solid var(--bt-line-2) !important;
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.35), 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 -1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 0.5px rgba(255, 255, 255, 0.35), 0 8px 24px rgba(0, 0, 0, 0.14);
 }
 html[data-ds-bot-look="glass"][data-ds-theme-source="dark"] .bt-pill,
 html[data-ds-bot-look="glass"][data-ds-theme-source="dark"] div[class*="_composerStack"] div[class*="_card"] {
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.4);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.10), transparent 60%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20), inset 0 -1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 8px 24px rgba(0, 0, 0, 0.45);
 }
