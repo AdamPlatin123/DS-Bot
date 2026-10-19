@@ -1,0 +1,48 @@
+/* Prototype looks for the frameless window, scoped by html[data-ds-bot-look] which the
+   preload sets. Only theme variables; the conversation column stays opaque. */
+
+/* The caption band is the frame's ::before layer; paint it translucent too so the top
+   strip frosts with the sidebar. The caption buttons keep the opaque measured fill —
+   Windows ignores the alpha in the overlay color, so transparency there is useless. */
+html[data-ds-bot-look="mica"] div[class*="_frame"]:has([class*="_sidebarCol"])::before,
+html[data-ds-bot-look="acrylic"] div[class*="_frame"]:has([class*="_sidebarCol"])::before,
+html[data-ds-bot-look="glass"] div[class*="_frame"]:has([class*="_sidebarCol"])::before {
+  background-color: color-mix(in srgb, var(--dsw-specific-sidebar-fill) 45%, transparent) !important;
+}
+
+/* The page, the outer frame (which also paints the caption band) and the sidebar column
+   shell go transparent so the desktop material shows through. */
+html[data-ds-bot-look="mica"] body,
+html[data-ds-bot-look="acrylic"] body,
+html[data-ds-bot-look="glass"] body,
+html[data-ds-bot-look="mica"] div[class*="_frame"]:has([class*="_sidebarCol"]),
+html[data-ds-bot-look="acrylic"] div[class*="_frame"]:has([class*="_sidebarCol"]),
+html[data-ds-bot-look="glass"] div[class*="_frame"]:has([class*="_sidebarCol"]),
+html[data-ds-bot-look="mica"] div[class*="_sidebarCol"],
+html[data-ds-bot-look="acrylic"] div[class*="_sidebarCol"],
+html[data-ds-bot-look="glass"] div[class*="_sidebarCol"] {
+  background-color: transparent !important;
+}
+
+/* One translucent coat on the sidebar's own surface — like DSH's macOS sidebar over
+   vibrancy — so the material frosts through with the theme's fill. */
+html[data-ds-bot-look="mica"] div[class*="_sidebarCol"] div[class*="_root"],
+html[data-ds-bot-look="acrylic"] div[class*="_sidebarCol"] div[class*="_root"],
+html[data-ds-bot-look="glass"] div[class*="_sidebarCol"] div[class*="_root"] {
+  background-color: color-mix(in srgb, var(--dsw-specific-sidebar-fill) 45%, transparent) !important;
+}
+
+/* 'glass': liquid-glass floating surfaces on top of the acrylic base. The chat capsule and
+   the composer card sit over the scroll area, so their fill, blur and specular edge read
+   against the content that slides beneath them. */
+html[data-ds-bot-look="glass"] .bt-pill,
+html[data-ds-bot-look="glass"] div[class*="_composerStack"] div[class*="_card"] {
+  background-color: color-mix(in srgb, var(--bt-card) 55%, transparent) !important;
+  backdrop-filter: blur(18px) saturate(1.5);
+  border: 0.5px solid var(--bt-line-2) !important;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.35), 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+html[data-ds-bot-look="glass"][data-ds-theme-source="dark"] .bt-pill,
+html[data-ds-bot-look="glass"][data-ds-theme-source="dark"] div[class*="_composerStack"] div[class*="_card"] {
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.4);
+}

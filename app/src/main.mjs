@@ -2,7 +2,7 @@
 // The dsh-app scheme, the request forwarding and the WebSocket header rewrite follow
 // DeepSeek Harness apps/desktop/src/main.ts (MIT); see NOTICE.
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, protocol, session, shell } from 'electron'
-import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
@@ -25,6 +25,12 @@ const UPDATE_CHECK_WAIT_MS = 15_000
 const UPDATE_DOWNLOAD_WAIT_MS = 15 * 60_000
 
 const here = dirname(fileURLToPath(import.meta.url))
+// Prototype switch for the frameless window look: 'plain' | 'mica' | 'acrylic' | 'glass'.
+const LOOK = process.env.DS_BOT_LOOK ?? 'plain'
+// Windows draws a desktop material behind the transparent page for the glass looks;
+// 'glass' is acrylic plus CSS liquid-glass surfaces. Anything else stays opaque.
+const MATERIAL = { mica: 'mica', acrylic: 'acrylic', glass: 'acrylic' }[LOOK]
+const LOOK_CSS = LOOK === 'plain' ? '' : readFileSync(join(here, 'look.css'), 'utf8')
 const webDist = join(dirname(createRequire(import.meta.url).resolve('@deepseek-ai/dsh-web-frontend/package.json')), 'dist')
 // Drawn by scripts/icon.mjs. Windows takes the .ico for its several sizes.
 const iconFile = join(here, '..', 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png')
@@ -137,6 +143,19 @@ async function start() {
   ipcMain.handle(IPC.bootFailed, (event, message) => {
     assertWindow(event)
     fail(new Error(String(message)))
+  })
+  // The preload sends the caption band's resolved colors, like DSH's windowsAppearance IPC
+  // (apps/desktop/src/main.ts); only CSS color values cross.
+  ipcMain.on('ds-bot:windows-appearance', (event, _language, color, symbolColor) => {
+    try { assertWindow(event) } catch { return }
+    const validColor = (value) => typeof value === 'string' && /^(?:#[\da-f]{3,8}|rgba?\([\d.,%\s]+\))$/iu.test(value)
+    if (mainWindow !== undefined && validColor(color) && validColor(symbolColor)) mainWindow.setTitleBarOverlay({ color, symbolColor })
+  })
+  // The Web UI's theme source drives nativeTheme so native chrome and the macOS vibrancy
+  // material follow the app theme.
+  ipcMain.on('ds-bot:native-theme-set', (event, source) => {
+    try { assertWindow(event) } catch { return }
+    if (source === 'light' || source === 'dark' || source === 'system') nativeTheme.themeSource = source
   })
 
   // The stream connects to the Host directly; the Host accepts only its own origin and cookie.
@@ -266,17 +285,68 @@ async function askDownload(version) {
   return response === 0
 }
 
+// The window goes frameless like DSH Desktop: on Windows the caption buttons overlay the
+// page's own 40px band, on macOS the traffic lights sit inside the sidebar's vibrancy
+// material (apps/desktop/src/main.ts's window options; see NOTICE).
 function createWindow() {
+  const dark = () => nativeTheme.shouldUseDarkColors
+  const fallback = () => (dark() ? '#1b1b1c' : '#f9fafb')
+  const transparent = process.platform === 'darwin' || MATERIAL !== undefined
   mainWindow = new BrowserWindow({
     width: 1320, height: 860, minWidth: 720, minHeight: 480,
     title: 'DeepSeek Bot', show: false, icon: iconFile,
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1b1b1c' : '#ffffff',
+    backgroundColor: transparent ? '#00000000' : fallback(),
+    ...(process.platform === 'win32' ? {
+      titleBarStyle: 'hidden',
+      titleBarOverlay: { height: 40, color: fallback(), symbolColor: dark() ? '#f9fafb' : '#0f1115' },
+      ...(MATERIAL !== undefined ? { backgroundMaterial: MATERIAL } : {}),
+    } : {}),
+    // hiddenInset places the traffic lights inside the sidebar; the sidebar vibrancy
+    // material needs a transparent window background to show through the page.
+    ...(process.platform === 'darwin' ? {
+      titleBarStyle: 'hiddenInset',
+      trafficLightPosition: { x: 16, y: 18 },
+      vibrancy: 'sidebar',
+      // 'active' keeps the material stable when the window blurs; 'followWindow' would
+      // wash the sidebar out behind an unfocused window.
+      visualEffectState: 'active',
+    } : {}),
     webPreferences: { preload: join(here, 'preload.cjs'), contextIsolation: true, sandbox: true },
   })
   mainWindow.once('ready-to-show', () => { mainWindow?.show() })
   mainWindow.on('page-title-updated', (event) => { event.preventDefault() })
   mainWindow.on('closed', () => { mainWindow = undefined })
   const contents = mainWindow.webContents
+  if (process.platform === 'darwin' || process.platform === 'win32') {
+    // Fullscreen hides the native window controls; the overlays drop their caption clearance.
+    const sendFullscreen = () => { if (!mainWindow?.isDestroyed()) contents.send('ds-bot:window-fullscreen', mainWindow.isFullScreen()) }
+    mainWindow.on('enter-full-screen', sendFullscreen)
+    mainWindow.on('leave-full-screen', sendFullscreen)
+    // The preload listener re-registers after every load; resend so a fullscreen reload
+    // does not fall back to windowed CSS.
+    contents.on('did-finish-load', sendFullscreen)
+  }
+  if (process.platform === 'darwin') {
+    // Deminiaturize reattaches the vibrancy material late (electron#25368), so a
+    // transparent window shows the desktop through the sidebar until then. Paint an
+    // opaque base while minimized or hidden; restoring flips back, and the material
+    // reattaches on the null -> 'sidebar' transition.
+    const applyBackdrop = () => {
+      if (mainWindow === undefined || mainWindow.isDestroyed()) return
+      if (mainWindow.isMinimized() || !mainWindow.isVisible()) {
+        mainWindow.setVibrancy(null)
+        mainWindow.setBackgroundColor(fallback())
+      } else {
+        mainWindow.setVibrancy('sidebar')
+        mainWindow.setBackgroundColor('#00000000')
+      }
+    }
+    mainWindow.on('minimize', applyBackdrop)
+    mainWindow.on('hide', applyBackdrop)
+    mainWindow.on('restore', applyBackdrop)
+    mainWindow.on('show', applyBackdrop)
+  }
+  if (LOOK_CSS !== '') contents.on('dom-ready', () => { void contents.insertCSS(LOOK_CSS) })
   contents.setWindowOpenHandler(({ url }) => { openOutside(url); return { action: 'deny' } })
   contents.on('will-navigate', (event, url) => {
     if (url.startsWith(`${APP_ORIGIN}/`)) return

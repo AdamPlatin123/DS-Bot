@@ -22,7 +22,12 @@ MIT License, Copyright (c) 2026 DeepSeek
   - app/src/host-process.mjs follows apps/desktop/src/host-process.ts: the
     Host in Electron's Node mode and the shutdown escalation.
   - app/src/main.mjs follows apps/desktop/src/main.ts for the dsh-app scheme
-    and the request routing.
+    and the request routing. Its frameless window follows that file's window
+    options (the Windows caption overlay and the macOS vibrancy dance), its
+    IPC validation, and the palette/theme handling of
+    apps/desktop/src/preload-platform.ts, apps/desktop/src/preload-windows.ts,
+    apps/desktop/src/windows-layout.ts and apps/desktop/src/preload-theme.ts,
+    which app/src/preload.cjs adapts.
   - app/engine/cordis.patch.yml follows the bundle patch of
     @deepseek-ai/dsh-web-app (packages/bundle/web-app/cordis.patch.yml): the
     transport and host-service rows and the agent-plane rows it turns off.
