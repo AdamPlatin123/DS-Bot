@@ -1,13 +1,8 @@
 /* Prototype looks for the frameless window, scoped by html[data-ds-bot-look] which the
    preload sets. Only theme variables; the conversation column stays opaque. */
 
-/* The caption buttons sit on the conversation column, so the probe measures that fill —
-   Windows ignores the alpha in the overlay color, an opaque match is the only answer. */
-html[data-ds-bot-look="mica"],
-html[data-ds-bot-look="acrylic"],
-html[data-ds-bot-look="glass"] {
-  --ds-bot-caption-fill: var(--dsw-alias-bg-base, var(--bt-main));
-}
+/* The caption buttons sit on the conversation column; the preload measures that element's
+   painted fill itself (Windows ignores the alpha in the overlay color). */
 
 /* The outer frame lifts both columns to the window's top edge; its ::before is the
    caption-band drag layer and stays above everything there but paints nothing. */
@@ -59,13 +54,11 @@ html[data-ds-bot-look="glass"] div[class*="_centerCol"] {
 html[data-ds-bot-look="glass"] .bt-pill,
 html[data-ds-bot-look="glass"] div[class*="_composerStack"] div[class*="_card"] {
   background-color: color-mix(in srgb, var(--bt-card) 38%, transparent) !important;
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 60%);
   backdrop-filter: blur(24px) saturate(1.8);
   border: 0.5px solid var(--bt-line-2) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 -1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 0.5px rgba(255, 255, 255, 0.35), 0 8px 24px rgba(0, 0, 0, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 8px 24px rgba(0, 0, 0, 0.14);
 }
 html[data-ds-bot-look="glass"][data-ds-theme-source="dark"] .bt-pill,
 html[data-ds-bot-look="glass"][data-ds-theme-source="dark"] div[class*="_composerStack"] div[class*="_card"] {
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.10), transparent 60%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20), inset 0 -1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 8px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.45);
 }

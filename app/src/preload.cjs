@@ -47,6 +47,19 @@ if (location.protocol === 'dsh-app:' && location.hostname === 'app') {
       // material instead of the opaque sidebar fill.
       probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;background-color:var(--ds-bot-caption-fill, var(--dsw-specific-sidebar-fill));color:var(--dsw-alias-label-primary)'
       document.body.append(probe)
+      // Windows ignores the alpha in the overlay color, so the buttons need the same opaque
+      // fill as whatever they stand on: the conversation column in the material looks, the
+      // sidebar-colored band otherwise. Variables can resolve differently from the paint, so
+      // measure the element itself, walking up to the first ancestor that is not transparent.
+      const captionSurface = () => {
+        let el = document.querySelector(look === 'plain' ? 'div[class*="_sidebarCol"]' : 'div[class*="_centerCol"]')
+        while (el !== null) {
+          const bg = getComputedStyle(el).backgroundColor
+          if (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg
+          el = el.parentElement
+        }
+        return null
+      }
       const canvas = document.createElement('canvas')
       canvas.width = canvas.height = 1
       const canvasContext = canvas.getContext('2d', { willReadFrequently: true })
@@ -61,7 +74,7 @@ if (location.protocol === 'dsh-app:' && location.hostname === 'app') {
       let previous = ''
       const send = () => {
         const style = getComputedStyle(probe)
-        const values = [pixel(style.backgroundColor), pixel(style.color)]
+        const values = [pixel(captionSurface() ?? style.backgroundColor), pixel(style.color)]
         const current = JSON.stringify(values)
         if (current === previous) return
         previous = current
