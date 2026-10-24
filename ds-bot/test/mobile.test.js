@@ -332,3 +332,22 @@ test('a member\'s approval in a group is a notice that names the group', async (
   controller.abort()
   assert.equal(await answer, 'cancelled')
 })
+
+test('the Remote feed gets the same events as the HTTP feed, hello first', async (t) => {
+  const { call, emit, rt, stop } = start()
+  t.after(stop)
+  const { writer } = await team(call)
+  const seen = []
+  const unsubscribe = rt.subscribeFeed((event, data) => seen.push([event, data]))
+  t.after(unsubscribe)
+  assert.equal(seen[0][0], 'hello')
+  assert.equal(seen[0][1].api, API_VERSION)
+  await emit(rt.chatOf(writer.id), { type: 'assistant/message', data: { turn: 1, message: { content: [{ type: 'text', text: 'Draft done' }] } } })
+  await call('set-prefs', { motion: 'lively' })
+  await waitFor(() => seen.some(([event]) => event === 'revision'))
+  assert.ok(seen.some(([event, data]) => event === 'notice' && data.text === 'Draft done'))
+  assert.ok(seen.some(([event, data]) => event === 'message' && data.item.text === 'Draft done'))
+  const hello = (await call('hello', {})).value
+  assert.deepEqual(hello.rpc, { call: 'dsBot/call', feed: 'dsBot/feed' })
+  assert.ok(hello.capabilities.includes('rpc'))
+})

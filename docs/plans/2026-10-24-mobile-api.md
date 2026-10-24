@@ -14,7 +14,7 @@
 
 取舍：
 
-- **传输不变。** 仍是 `POST api/bot` 和 `GET api/bot/feed`，DSH 的会话 cookie 鉴权，和桌面应用的窗口一样。不另开 Typert 接口：插件注册 Typert 接口要类型描述，现有的接口已经够用。代价：只走 Typert 白名单的远程中继（ds-harness-remote）到不了这两个路由，见「已知限制」。
+- **两条传输，同一套回答。** 本机和 SSH 隧道仍走 `POST api/bot` 和 `GET api/bot/feed`，DSH 的会话 cookie 鉴权，和桌面应用的窗口一样。远程中继（ds-harness-remote）只转发 DSH 的 Remote 方法、不转发 Fetch 路由，所以同样的调用和直播也注册成 Remote 方法 `dsBot/call` 和 `dsBot/feed`。两条路走同一个处理函数、同一份事件。
 - **显示用的条目，不是原始事件。** 群聊和 Bot 私聊都给「谁、说了什么、什么时候」的条目，客户端不需要懂 DSH 的会话事件和 DS Bot 的内部来源标记。
 - **提醒放内存。** 提醒只是「回来时补上」的索引，不是记录本身；真正的内容还在会话和 `state.json` 里。所以不落盘，重启后从头计数（`boot` 变了），客户端重新读一遍团队即可。
 
@@ -77,6 +77,13 @@
 
 - `usage-summary`：`{ botId, timeZone? }` → `{ botId, day, week, month, models, scanning }`。`day`、`week`、`month` 是最近 24 小时、7 天、30 天的 `{ input, cacheRead, cacheWrite, output, calls }`；`models` 是最近 30 天按模型分的同样数字。
 
+### Remote 方法
+
+- `dsBot/call {endpoint, payload}`：等同于 `POST api/bot` 的一次调用，回答同样是 `{ ok, value }` 或 `{ ok: false, error }`。
+- `dsBot/feed {}`：流，每项 `{ event, data }`，事件和 HTTP 直播一样，第一项是 `hello`。读得太慢（积压 512 项）的读者被结束，重新打开后从 `hello` 补上。
+- 只在有 Typert Gateway 的 DSH（Web、Desktop）里挂载。插件是纯 JS，没有 Typert 生成器，所以由 Gateway 按 `@Remote` 标记服务这两个方法（它的源码模式）：参数是简单的名字，值只能是 JSON。
+- `hello` 多带 `rpc: { call, feed }`，`capabilities` 里有 `rpc`。
+
 ### 只读的 DSH
 
 - `hello`、`notices`、`avatar`、`room-chat`、`usage-summary` 在只读的 DSH 上也回答；`memory-add`、`memory-edit` 和其他改动一样拒绝（`bot/read-only`）。
@@ -90,7 +97,8 @@
 
 ## 已知限制
 
-- 远程中继（ds-harness-remote）只转发它白名单里的 Typert 接口，`api/bot` 不在里面，所以通过中继连上的 DSH 用不了这套接口；SSH 隧道、局域网直连和本机都可以。
+- 远程中继（ds-harness-remote）只转发它白名单里的 Remote 方法：它的白名单加上 `dsBot/call`、`dsBot/feed` 之后，通过中继连上的 DSH 才能用这套接口。SSH 隧道、局域网直连和本机不受影响。
+- Remote 方法走 Gateway 的源码模式，参数和回答不按生成的类型校验，只检查是 JSON。
 - 旧群（PTC 预设下建的）一轮跑在 `run_code` 里，`room-chat` 认不出这种轮次的发言。
 - 提醒不落盘：DSH 重启前没送到的提醒就丢了，客户端只能重读团队。
 

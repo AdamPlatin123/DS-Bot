@@ -493,6 +493,9 @@ export function install(rt) {
     }
   }
 
+  // The same answers for the Remote method `dsBot/call` (remote.js).
+  rt.channelCall = handle
+
   // An exact Fetch route on the shared /api channel; the browser authenticates with its session cookie.
   ctx.effect(() => ctx.connection.fetch.register({
     path: ROUTE,

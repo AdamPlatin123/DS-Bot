@@ -18,7 +18,7 @@ export const API_VERSION = 1
 export const API_MIN = 1
 export const CAPABILITIES = [
   'state', 'state-avatar-refs', 'avatar', 'chat', 'room-chat', 'send', 'feed', 'feed-room', 'notices',
-  'questions', 'views', 'approvals', 'stop-member-work', 'memory', 'memory-edit', 'usage-summary',
+  'questions', 'views', 'approvals', 'stop-member-work', 'memory', 'memory-edit', 'usage-summary', 'rpc',
 ]
 export const NOTICE_KINDS = ['message', 'group', 'done', 'question', 'view', 'approval']
 
@@ -214,6 +214,8 @@ export function install(rt) {
       readOnly: rt.readOnly() ?? null,
       memory: rt.memoryEnabled !== false,
       feed: 'api/bot/feed',
+      // The same calls and feed as Remote methods (remote.js), for carriers without Fetch routes.
+      rpc: { call: 'dsBot/call', feed: 'dsBot/feed' },
     }
   }
 
