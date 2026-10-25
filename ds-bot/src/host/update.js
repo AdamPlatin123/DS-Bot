@@ -256,8 +256,11 @@ export function install(rt) {
         // With HMR the plugin manager refuses to install a package the profile already
         // depends on: remove the bundle (which unloads this host) and install it again.
         if (typeof service.removeBundle !== 'function') return { error: { code: 'not-removable' } }
-        // Asked before removal drops this host: the spec that puts the old version back.
-        const previous = await Promise.resolve(installSpecOf(ctx)).catch(() => undefined)
+        // Asked before removal drops this host: the spec that puts the old version
+        // back. A registry spec is a range that can resolve to the failed release
+        // again, so pin the version that is actually running.
+        const oldSpec = await Promise.resolve(installSpecOf(ctx)).catch(() => undefined)
+        const previous = typeof oldSpec === 'string' && sourceOf(oldSpec).kind === 'registry' ? `${PKG.name}@${PKG.version}` : oldSpec
         mark()
         const removed = await Promise.resolve(service.removeBundle(PKG.name)).catch((error) => { unmark(); throw error })
         if (removed?.error) {
@@ -267,7 +270,7 @@ export function install(rt) {
         // The bundle is gone now; a failed install leaves no DS Bot unless the old one goes back.
         const restore = async (failed) => {
           if (typeof previous !== 'string' || previous === '') return failed
-          const back = await Promise.resolve(service.installBundle(previous, {})).catch(error => ({ error: { code: error?.message ?? 'restore failed' } }))
+          const back = await Promise.resolve(service.installBundle(previous, sourceOf(previous).kind === 'registry' && chosen.registry ? { registry: chosen.registry } : {})).catch(error => ({ error: { code: error?.message ?? 'restore failed' } }))
           if (back?.error) {
             note('ds-bot: could not reinstall %s after the failed update: %s', previous, back.error.diagnostic ?? back.error.code)
             return failed

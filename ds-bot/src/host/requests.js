@@ -103,9 +103,17 @@ export function install(rt) {
         const receipt = await work()
         if (request.unsent === true) {
           // The work decided before anything went out: it is not a delivered
-          // receipt, so the request is free to be admitted again.
+          // receipt, so the request is free to be admitted again. The removal has
+          // to be saved before that is true: a leftover pending record stays.
           delete receipts()[request.key]
-          await rt.save().catch(() => {})
+          try {
+            await rt.save({ required: true })
+          } catch (error) {
+            fresh.outcome = 'uncertain'
+            fresh.at = Date.now()
+            receipts()[request.key] = fresh
+            rt.warn('ds-bot: the removal of the request receipt was not saved: %s', error)
+          }
           return receipt
         }
         fresh.outcome = 'delivered'
