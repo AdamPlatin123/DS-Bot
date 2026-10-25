@@ -16375,7 +16375,7 @@ var DETAILS_MAX = 520;
 var MIN_WIDTH = 360;
 var MIN_CHAT = 420;
 var PANEL_MIN = { details: DETAILS_WIDTH, browser: MIN_WIDTH, side: DETAILS_WIDTH };
-var overlayAt = (view, viewport) => viewport < MIN_CHAT + PANEL_MIN[view];
+var overlayAt = (view, room2) => room2 < MIN_CHAT + PANEL_MIN[view];
 var READ_FLASH_MS = 2400;
 var EMPTY_PAGE = { url: "", title: "", favicon: null, loading: false, canGoBack: false, canGoForward: false, error: null, excerpt: "" };
 var EMPTY_TABS2 = { ids: [], active: null };
@@ -16412,8 +16412,15 @@ var savedWidth = () => {
     return null;
   }
 };
-var widthRange = (view, viewport) => view === "browser" ? [MIN_WIDTH, viewport - MIN_CHAT] : [DETAILS_WIDTH, Math.min(DETAILS_MAX, viewport - MIN_CHAT)];
+var widthRange = (view, room2) => view === "browser" ? [MIN_WIDTH, room2 - MIN_CHAT] : [DETAILS_WIDTH, Math.min(DETAILS_MAX, room2 - MIN_CHAT)];
 var fitWidth = (width, [low, high]) => Math.round(Math.max(low, Math.min(width, high)));
+var measureRoom = () => {
+  let room2 = Infinity;
+  for (const column of document.querySelectorAll('[class*="_centerCol"]')) {
+    room2 = Math.min(room2, column.getBoundingClientRect().width + (parseFloat(getComputedStyle(column).marginRight) || 0));
+  }
+  return room2 === Infinity ? window.innerWidth : Math.max(0, room2);
+};
 var room = { rule: null, selector: "" };
 var roomRule = () => {
   const live = room.rule?.parentStyleSheet?.ownerNode?.isConnected;
@@ -17070,13 +17077,13 @@ function BotPanel({ pane, leaving, roster, actions, useSessions, useSessionStatu
   const [landed, setLanded] = (0, import_react42.useState)(false);
   const [settling, setSettling] = (0, import_react42.useState)(false);
   const [width, setWidth] = (0, import_react42.useState)(savedWidth);
-  const [viewport, setViewport] = (0, import_react42.useState)(() => window.innerWidth);
+  const [room2, setRoom] = (0, import_react42.useState)(measureRoom);
   const [dragging, setDragging] = (0, import_react42.useState)(false);
   const [resizing, setResizing] = (0, import_react42.useState)(false);
   const instant = dragging || resizing;
   const [reading, setReading] = (0, import_react42.useState)(false);
-  const overlay = overlayAt(view, viewport);
-  const panelWidth = fitWidth(width ?? (view === "browser" ? DEFAULT_WIDTH : DETAILS_WIDTH), widthRange(view, viewport));
+  const overlay = overlayAt(view, room2);
+  const panelWidth = fitWidth(width ?? (view === "browser" ? DEFAULT_WIDTH : DETAILS_WIDTH), widthRange(view, room2));
   (0, import_react42.useLayoutEffect)(() => {
     if (view === "browser" && width === null) setWidth(DEFAULT_WIDTH);
   }, [view, width]);
@@ -17104,13 +17111,16 @@ function BotPanel({ pane, leaving, roster, actions, useSessions, useSessionStatu
     let timer;
     const onResize = () => {
       setResizing(true);
-      setViewport(window.innerWidth);
+      setRoom(measureRoom());
       clearTimeout(timer);
       timer = setTimeout(() => setResizing(false), 160);
     };
+    const observer = new ResizeObserver(onResize);
+    for (const column of document.querySelectorAll('[class*="_centerCol"]')) observer.observe(column);
     window.addEventListener("resize", onResize);
     return () => {
       clearTimeout(timer);
+      observer.disconnect();
       window.removeEventListener("resize", onResize);
     };
   }, []);
@@ -17226,7 +17236,7 @@ function BotPanel({ pane, leaving, roster, actions, useSessions, useSessionStatu
     const panel = root.current;
     const grip = event.currentTarget;
     grip.setPointerCapture?.(event.pointerId);
-    const range = widthRange(view, window.innerWidth);
+    const range = widthRange(view, measureRoom());
     const from = { x: event.clientX, width: panelWidth };
     let next = panelWidth;
     setDragging(true);
@@ -17417,7 +17427,7 @@ var BROWSER_CSS = `
 .bt-import-plain{height:32px;padding:0 14px;border:.5px solid var(--bt-line-2);border-radius:999px;background:var(--bt-main);color:var(--bt-ink);font:inherit;font-size:13px;cursor:pointer}
 .bt-import-plain:hover{background:var(--bt-hover)}
 .bt-import-plain:disabled{opacity:.55;cursor:default}
-/* A viewport too narrow to leave the conversation its room: the panel covers it,
+/* Too little room to leave the conversation its share: the panel covers it,
    and its close controls get a touch-sized target. */
 .bt-panel[data-overlay]{width:100vw}
 .bt-panel[data-overlay] .bt-ptab-close,.bt-panel[data-overlay] .bt-drawer-top .bt-round{width:44px;height:44px}

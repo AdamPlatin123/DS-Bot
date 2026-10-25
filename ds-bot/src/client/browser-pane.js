@@ -29,9 +29,9 @@ const MIN_WIDTH = 360
 // The conversation keeps at least this much room beside the panel.
 const MIN_CHAT = 420
 const PANEL_MIN = { details: DETAILS_WIDTH, browser: MIN_WIDTH, side: DETAILS_WIDTH }
-// Below this viewport width the panel cannot leave the conversation its room:
+// Below this room the panel cannot leave the conversation its share:
 // it covers the conversation instead of pushing it aside.
-const overlayAt = (view, viewport) => viewport < MIN_CHAT + PANEL_MIN[view]
+const overlayAt = (view, room) => room < MIN_CHAT + PANEL_MIN[view]
 // How long the Bot's mark shows that it read the page.
 const READ_FLASH_MS = 2400
 const EMPTY_PAGE = { url: '', title: '', favicon: null, loading: false, canGoBack: false, canGoForward: false, error: null, excerpt: '' }
@@ -72,10 +72,21 @@ const savedWidth = () => {
     return Number.isFinite(value) && value >= DETAILS_WIDTH ? value : null
   } catch { return null }
 }
-const widthRange = (view, viewport) => (view === 'browser'
-  ? [MIN_WIDTH, viewport - MIN_CHAT]
-  : [DETAILS_WIDTH, Math.min(DETAILS_MAX, viewport - MIN_CHAT)])
+const widthRange = (view, room) => (view === 'browser'
+  ? [MIN_WIDTH, room - MIN_CHAT]
+  : [DETAILS_WIDTH, Math.min(DETAILS_MAX, room - MIN_CHAT)])
 const fitWidth = (width, [low, high]) => Math.round(Math.max(low, Math.min(width, high)))
+
+// The room the panel and the conversation share: the center column's grid
+// track, margin included — a sidebar or another right track never counts
+// against it, and our own margin is part of the room again.
+const measureRoom = () => {
+  let room = Infinity
+  for (const column of document.querySelectorAll('[class*="_centerCol"]')) {
+    room = Math.min(room, column.getBoundingClientRect().width + (parseFloat(getComputedStyle(column).marginRight) || 0))
+  }
+  return room === Infinity ? window.innerWidth : Math.max(0, room)
+}
 
 // The conversation column's right margin lives in one rule of our own, matched on the
 // column's exact class. A custom property on <body> would restyle the whole page, tens
@@ -578,15 +589,15 @@ export function BotPanel({ pane, leaving, roster, actions, useSessions, useSessi
   const [landed, setLanded] = useState(false)
   const [settling, setSettling] = useState(false)
   const [width, setWidth] = useState(savedWidth)
-  const [viewport, setViewport] = useState(() => window.innerWidth)
+  const [room, setRoom] = useState(measureRoom)
   // While dragging or while the window resizes, width changes land at once.
   const [dragging, setDragging] = useState(false)
   const [resizing, setResizing] = useState(false)
   const instant = dragging || resizing
   const [reading, setReading] = useState(false)
 
-  const overlay = overlayAt(view, viewport)
-  const panelWidth = fitWidth(width ?? (view === 'browser' ? DEFAULT_WIDTH : DETAILS_WIDTH), widthRange(view, viewport))
+  const overlay = overlayAt(view, room)
+  const panelWidth = fitWidth(width ?? (view === 'browser' ? DEFAULT_WIDTH : DETAILS_WIDTH), widthRange(view, room))
   // Once the browser has shown, the Bot page keeps its width (up to DETAILS_MAX).
   useLayoutEffect(() => { if (view === 'browser' && width === null) setWidth(DEFAULT_WIDTH) }, [view, width])
   useLayoutEffect(() => { chatRoom.hold(instant) }, [instant])
@@ -614,12 +625,15 @@ export function BotPanel({ pane, leaving, roster, actions, useSessions, useSessi
     let timer
     const onResize = () => {
       setResizing(true)
-      setViewport(window.innerWidth)
+      setRoom(measureRoom())
       clearTimeout(timer)
       timer = setTimeout(() => setResizing(false), 160)
     }
+    // The sidebar's toggle and drags resize the column without a window event.
+    const observer = new ResizeObserver(onResize)
+    for (const column of document.querySelectorAll('[class*="_centerCol"]')) observer.observe(column)
     window.addEventListener('resize', onResize)
-    return () => { clearTimeout(timer); window.removeEventListener('resize', onResize) }
+    return () => { clearTimeout(timer); observer.disconnect(); window.removeEventListener('resize', onResize) }
   }, [])
   useEffect(() => {
     if (!settling) return undefined
@@ -728,7 +742,7 @@ export function BotPanel({ pane, leaving, roster, actions, useSessions, useSessi
     const panel = root.current
     const grip = event.currentTarget
     grip.setPointerCapture?.(event.pointerId)
-    const range = widthRange(view, window.innerWidth)
+    const range = widthRange(view, measureRoom())
     const from = { x: event.clientX, width: panelWidth }
     let next = panelWidth
     setDragging(true)
@@ -895,7 +909,7 @@ export const BROWSER_CSS = `
 .bt-import-plain{height:32px;padding:0 14px;border:.5px solid var(--bt-line-2);border-radius:999px;background:var(--bt-main);color:var(--bt-ink);font:inherit;font-size:13px;cursor:pointer}
 .bt-import-plain:hover{background:var(--bt-hover)}
 .bt-import-plain:disabled{opacity:.55;cursor:default}
-/* A viewport too narrow to leave the conversation its room: the panel covers it,
+/* Too little room to leave the conversation its share: the panel covers it,
    and its close controls get a touch-sized target. */
 .bt-panel[data-overlay]{width:100vw}
 .bt-panel[data-overlay] .bt-ptab-close,.bt-panel[data-overlay] .bt-drawer-top .bt-round{width:44px;height:44px}
