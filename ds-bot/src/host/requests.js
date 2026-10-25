@@ -101,6 +101,13 @@ export function install(rt) {
       }
       try {
         const receipt = await work()
+        if (request.unsent === true) {
+          // The work decided before anything went out: it is not a delivered
+          // receipt, so the request is free to be admitted again.
+          delete receipts()[request.key]
+          await rt.save().catch(() => {})
+          return receipt
+        }
         fresh.outcome = 'delivered'
         fresh.receipt = receipt
         fresh.at = Date.now()
