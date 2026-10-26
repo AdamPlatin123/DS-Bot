@@ -413,10 +413,12 @@ function UpdateButton({ useUpdate, actions }) {
                 }, dshPhase === 'installing' ? t('Updating…') : dshPhase === 'failed' ? t('Try again') : t('Update')))) : null), document.body) : null)
 }
 
-// The footer entry to the shell's plugin panel.
+// The footer entry to the shell's plugin panel. It stays mounted when the
+// sidebar narrows — unmounting the slot's only entry took the whole footer
+// contribution down, and the freeze came with putting it back — so a narrow
+// sidebar hides the button instead.
 export function ConnectPlugins({ wide, actions }) {
-  if (!wide) return null
-  return h('span', { className: 'bt-connect-wrap' },
+  return h('span', { className: wide ? 'bt-connect-wrap' : 'bt-connect-wrap bt-off' },
     h('button', {
       type: 'button', className: 'bt-connect bt-connect-foot',
       onClick: () => actions.selectPanel('plugins'),
