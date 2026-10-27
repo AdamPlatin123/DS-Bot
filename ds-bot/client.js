@@ -95,6 +95,7 @@ var ZH = {
   // Sidebar and account menu
   "Bot list": "Bot 列表",
   "Setting up your Main Bot…": "正在设置你的主 Bot…",
+  "Your Bots will swim here": "你的 Bot 会在这里畅游",
   "Automation tasks": "自动化任务",
   Connectors: "连接器",
   "Search connectors": "搜索连接器",
@@ -8545,6 +8546,24 @@ function useMarkedUnread(id, active, marked, actions) {
   }, [active, marked]);
 }
 var PinMark = () => (0, import_react15.createElement)("span", { className: "bt-pin", "aria-hidden": true }, (0, import_react15.createElement)(PinMarkIcon));
+var waveLine = (x, y, height) => `M${x} ${y}q7.5 ${-height} 15 0${"t15 0".repeat(13)}`;
+var WAVE_BACK = waveLine(-37.5, 18, 3.5);
+var WAVE_FRONT = waveLine(-30, 27, 4.5);
+function OpenWater() {
+  return (0, import_react15.createElement)(
+    "div",
+    { className: "bt-swim" },
+    (0, import_react15.createElement)(
+      "svg",
+      { className: "bt-swim-wave", width: 120, height: 40, viewBox: "0 0 120 40", fill: "none", stroke: "currentColor", strokeLinecap: "round", "aria-hidden": true },
+      (0, import_react15.createElement)("path", { className: "bt-swim-back", d: WAVE_BACK, strokeWidth: 1.4, opacity: 0.55 }),
+      (0, import_react15.createElement)("path", { className: "bt-swim-front", d: WAVE_FRONT, strokeWidth: 1.6 }),
+      (0, import_react15.createElement)("circle", { cx: 76, cy: 9, r: 2.2, strokeWidth: 1.2 }),
+      (0, import_react15.createElement)("circle", { cx: 83, cy: 3.6, r: 1.4, strokeWidth: 1.2 })
+    ),
+    (0, import_react15.createElement)("p", { className: "bt-empty" }, t("Your Bots will swim here"))
+  );
+}
 var useApproval = (useWork, match) => useWork ? useWork((work) => (work.approvals ?? []).some(match)) : false;
 var useGroupWork = (useWork, pick2) => useWork ? useWork((work) => JSON.stringify(pick2(work.rooms ?? {}))) : "[]";
 var workKeys = (text) => JSON.parse(text);
@@ -8897,7 +8916,8 @@ function TeamSidebar(props) {
       "div",
       { ref: listRef, className: "bt-list", role: "region", "aria-label": t("Bot list") },
       main ? (0, import_react15.createElement)(BotRow, { ...rowProps, bot: main, marked: markedUnread[main.id] === true }) : roster.ready ? null : (0, import_react15.createElement)("div", { className: "bt-hint" }, t("Setting up your Main Bot…")),
-      order.map((entry) => entry.kind === "bot" ? (0, import_react15.createElement)(BotRow, { key: entry.item.id, ...rowProps, bot: entry.item, marked: markedUnread[entry.item.id] === true }) : entry.kind === "room" ? (0, import_react15.createElement)(RoomRow, { key: entry.item.id, ...rowProps, room: entry.item, marked: markedUnread[entry.item.id] === true }) : (0, import_react15.createElement)(AgentRow, { key: entry.item.id, ...rowProps, agent: entry.item, marked: markedUnread[entry.item.id] === true }))
+      order.map((entry) => entry.kind === "bot" ? (0, import_react15.createElement)(BotRow, { key: entry.item.id, ...rowProps, bot: entry.item, marked: markedUnread[entry.item.id] === true }) : entry.kind === "room" ? (0, import_react15.createElement)(RoomRow, { key: entry.item.id, ...rowProps, room: entry.item, marked: markedUnread[entry.item.id] === true }) : (0, import_react15.createElement)(AgentRow, { key: entry.item.id, ...rowProps, agent: entry.item, marked: markedUnread[entry.item.id] === true })),
+      wide && main && order.length === 0 ? (0, import_react15.createElement)(OpenWater) : null
     )
   );
 }
@@ -9298,6 +9318,13 @@ var SIDEBAR_CSS = `
 .bt-rail .bt-row{position:relative}
 .bt-rail .bt-pin{position:absolute;top:3px;left:calc(50% + 12px)}
 .bt-side .bt-read-only{margin:4px 8px 6px;padding:8px 10px;border-radius:10px;background:var(--bt-hover);font-size:12px;line-height:1.45;text-align:left}
+.bt-swim{display:flex;flex-direction:column;align-items:center;margin:auto 0;padding:24px 0 64px;color:var(--bt-ink-3);animation:bt-veil-in .24s ease-out backwards}
+.bt-swim-wave{flex:none;mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent)}
+.bt-swim .bt-empty{margin:0;padding:4px 12px 0}
+body[data-bt-motion=lively] .bt-swim-front{animation:bt-swim-drift 7s linear infinite}
+body[data-bt-motion=lively] .bt-swim-back{animation:bt-swim-drift 11s linear infinite reverse}
+@keyframes bt-swim-drift{to{translate:-30px 0}}
+@media (prefers-reduced-motion:reduce){.bt-swim,.bt-swim-wave path{animation:none}}
 [class*="_footArea"]:has(.bt-foot-account){grid-template-columns:auto minmax(0,1fr) auto;column-gap:6px}
 [class*="_footArea"]>[class*="_footerActions"]>div>.bt-foot-account{grid-column:1;order:1;display:inline-flex}
 [class*="_footArea"]:has(.bt-foot-account)>[class*="_settingsArea"]{grid-column:3}

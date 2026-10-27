@@ -348,6 +348,40 @@ test('an open sidebar has a button that collapses it; the rail leaves that to th
   assert.equal(find(TeamSidebar(props(false)), collapse), undefined)
 })
 
+// #622: with only the Main Bot, the open sidebar was blank below the Main Bot's card.
+test('an open sidebar with only the Main Bot shows open water, which moves only when the team is lively', () => {
+  const main = { id: 'chief', name: 'Chief', createdAt: 1 }
+  const room = { id: 'room', name: 'Ops', members: ['chief'], createdAt: 2 }
+  const agent = { id: 'agent', sessions: [], createdAt: 3 }
+  const render = (wide, more = {}) => {
+    const roster = { bots: [main], rooms: [], agents: [], ...more, byId: { chief: main }, mainBotId: 'chief', ready: true, exchangeTurns: {} }
+    return TeamSidebar({
+      wide, actions: {},
+      useRoster: pick => pick(roster), useUi: pick => pick({ unread: {} }), useRegistry: pick => pick({}),
+      useSessions: pick => pick({ ids: [], byId: {} }), useUpdate: () => ({}),
+    })
+  }
+  const find = (node, match) => {
+    if (Array.isArray(node)) return node.map(child => find(child, match)).find(Boolean)
+    if (!node || typeof node !== 'object') return undefined
+    return match(node) ? node : find(node.props?.children, match)
+  }
+  const water = node => node.type?.name === 'OpenWater'
+  const shown = find(render(true), water)
+  assert.ok(shown)
+  const hint = shown.type()
+  assert.equal(find(hint, node => node.type === 'p').props.children.join(''), 'Your Bots will swim here')
+  assert.equal(find(hint, node => node.type === 'svg').props['aria-hidden'], true)
+  assert.equal(find(render(false), water), undefined)
+  assert.equal(find(render(true, { rooms: [room] }), water), undefined)
+  assert.equal(find(render(true, { agents: [agent] }), water), undefined)
+  assert.equal(find(render(true, { bots: [main, { id: 'writer', name: 'Writer', createdAt: 4 }] }), water), undefined)
+  // Still by default: the drift belongs to the Lively level, and reduced motion stops it.
+  assert.doesNotMatch(SIDEBAR_CSS, /(^|\n)\.bt-swim-(front|back)\{[^}]*animation/)
+  assert.match(SIDEBAR_CSS, /body\[data-bt-motion=lively\] \.bt-swim-front\{animation:bt-swim-drift /)
+  assert.match(SIDEBAR_CSS, /@media \(prefers-reduced-motion:reduce\)\{\.bt-swim,\.bt-swim-wave path\{animation:none\}\}/)
+})
+
 test('the logo row takes no room in an open sidebar under a Windows title bar', () => {
   const { document } = shell({ platform: 'windows', collapsed: false })
   const row = document.querySelector('.x_logoRow')
