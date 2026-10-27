@@ -354,7 +354,7 @@ test('an open sidebar with only the Main Bot shows open water, which moves only 
   const room = { id: 'room', name: 'Ops', members: ['chief'], createdAt: 2 }
   const agent = { id: 'agent', sessions: [], createdAt: 3 }
   const render = (wide, more = {}) => {
-    const roster = { bots: [main], rooms: [], agents: [], ...more, byId: { chief: main }, mainBotId: 'chief', ready: true, exchangeTurns: {} }
+    const roster = { bots: [main], rooms: [], agents: [], byId: { chief: main }, mainBotId: 'chief', ready: true, exchangeTurns: {}, ...more }
     return TeamSidebar({
       wide, actions: {},
       useRoster: pick => pick(roster), useUi: pick => pick({ unread: {} }), useRegistry: pick => pick({}),
@@ -376,10 +376,13 @@ test('an open sidebar with only the Main Bot shows open water, which moves only 
   assert.equal(find(render(true, { rooms: [room] }), water), undefined)
   assert.equal(find(render(true, { agents: [agent] }), water), undefined)
   assert.equal(find(render(true, { bots: [main, { id: 'writer', name: 'Writer', createdAt: 4 }] }), water), undefined)
-  // Still by default: the drift belongs to the Lively level, and reduced motion stops it.
-  assert.doesNotMatch(SIDEBAR_CSS, /(^|\n)\.bt-swim-(front|back)\{[^}]*animation/)
-  assert.match(SIDEBAR_CSS, /body\[data-bt-motion=lively\] \.bt-swim-front\{animation:bt-swim-drift /)
-  assert.match(SIDEBAR_CSS, /@media \(prefers-reduced-motion:reduce\)\{\.bt-swim,\.bt-swim-wave path\{animation:none\}\}/)
+  // While the Main Bot is still being set up, the list shows that instead.
+  assert.equal(find(render(true, { bots: [], byId: {}, mainBotId: undefined, ready: false }), water), undefined)
+  // Still by default: only the Lively level drifts the wave, and reduced motion stops it.
+  const drifts = SIDEBAR_CSS.split('}').filter(rule => rule.includes('animation:bt-swim-drift'))
+  assert.equal(drifts.length, 2)
+  for (const rule of drifts) assert.match(rule.trim(), /^body\[data-bt-motion=lively\] \.bt-swim-(front|back)\{/)
+  assert.match(SIDEBAR_CSS, /@media \(prefers-reduced-motion:reduce\)\{\.bt-swim,\.bt-swim-wave path\{animation:none!important\}\}/)
 })
 
 test('the logo row takes no room in an open sidebar under a Windows title bar', () => {

@@ -29,8 +29,8 @@ const waveLine = (x, y, height) => `M${x} ${y}q7.5 ${-height} 15 0${'t15 0'.repe
 const WAVE_BACK = waveLine(-37.5, 18, 3.5)
 const WAVE_FRONT = waveLine(-30, 27, 4.5)
 
-// With only the Main Bot, the list below its card is open water, where the team's Bots
-// will show up. The wave keeps still unless the team's animation level is Lively.
+// Ambient motion belongs to the Lively level (ui-standard principle 4), so the wave keeps
+// still otherwise; reduced motion needs !important to outweigh the Lively rules.
 function OpenWater() {
   return h('div', { className: 'bt-swim' },
     h('svg', { className: 'bt-swim-wave', width: 120, height: 40, viewBox: '0 0 120 40', fill: 'none', stroke: 'currentColor', strokeLinecap: 'round', 'aria-hidden': true },
@@ -701,7 +701,7 @@ export const SIDEBAR_CSS = `
 body[data-bt-motion=lively] .bt-swim-front{animation:bt-swim-drift 7s linear infinite}
 body[data-bt-motion=lively] .bt-swim-back{animation:bt-swim-drift 11s linear infinite reverse}
 @keyframes bt-swim-drift{to{translate:-30px 0}}
-@media (prefers-reduced-motion:reduce){.bt-swim,.bt-swim-wave path{animation:none}}
+@media (prefers-reduced-motion:reduce){.bt-swim,.bt-swim-wave path{animation:none!important}}
 [class*="_footArea"]:has(.bt-foot-account){grid-template-columns:auto minmax(0,1fr) auto;column-gap:6px}
 [class*="_footArea"]>[class*="_footerActions"]>div>.bt-foot-account{grid-column:1;order:1;display:inline-flex}
 [class*="_footArea"]:has(.bt-foot-account)>[class*="_settingsArea"]{grid-column:3}
