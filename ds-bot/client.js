@@ -122,8 +122,10 @@ var ZH = {
   "New skill": "新技能",
   "Awaiting approval": "等待批准",
   Added: "新增",
+  Modified: "已修改",
   "Show all {count} lines": "展开全部 {count} 行",
   "Skill update": "技能更新",
+  "AGENTS.md update": "AGENTS.md 更新",
   Approve: "批准",
   Decline: "拒绝",
   "Save changes": "保存更改",
@@ -670,6 +672,8 @@ var ZH = {
   "{first}, {second} and {count} more are waiting for your approval": "{first}、{second} 等 {total} 个等你批准",
   "Waiting for your approval": "等你批准",
   "in its own chat": "在自己的对话里",
+  "Stop all work in this group": "停止本群的所有工作",
+  "Stop all": "全部停止",
   Reject: "拒绝",
   "Allow once": "允许一次",
   "Couldn't message {name}": "没能给 {name} 发消息",
@@ -1695,6 +1699,7 @@ function teamActions({ call: call2, after, partFor, roster, ui: ui2, live, cards
     deleteBtw: (sessionId, cardId) => after(call2("btw-delete", { sessionId, cardId })),
     answerApproval: (id, choice) => after(call2("approval-answer", { id, choice })),
     stopMemberWork: (roomId, botId) => after(call2("stop-member-work", { roomId, botId })),
+    stopRoomWork: (roomId) => after(call2("stop-room-work", { roomId })),
     // Values go out in these requests and never come back in a response.
     secretSet: (payload) => after(call2("secret-set", payload)),
     secretAllow: (requestId) => after(call2("secret-allow", { requestId })),
@@ -9193,6 +9198,12 @@ function useMarkedUnread(id, active, marked, actions) {
   }, [active, marked]);
 }
 var PinMark = () => (0, import_react18.createElement)("span", { className: "bt-pin", "aria-hidden": true }, (0, import_react18.createElement)(PinMarkIcon));
+var nameIfCut = (event) => {
+  const row = event.currentTarget;
+  const name = row.querySelector(".bt-row-title");
+  if (name && name.scrollWidth > name.clientWidth) row.title = name.textContent;
+  else row.removeAttribute("title");
+};
 var waveLine = (x, y, height) => `M${x} ${y}q7.5 ${-height} 15 0${"t15 0".repeat(13)}`;
 var WAVE_BACK = waveLine(-37.5, 18, 3.5);
 var WAVE_FRONT = waveLine(-30, 27, 4.5);
@@ -9275,6 +9286,7 @@ function BotRow({ bot, roster, actions, useSessions, useSessionStatus, useSessio
       "aria-current": active ? "page" : void 0,
       "data-bot-id": id,
       title: wide ? void 0 : bot.name,
+      onMouseEnter: wide ? nameIfCut : void 0,
       onClick: () => actions.openSession(id),
       onContextMenu
     },
@@ -9311,6 +9323,8 @@ function RoomRow({ room: room2, roster, actions, useSessions, useSessionStatus, 
       "aria-label": label,
       "aria-current": active ? "page" : void 0,
       "data-room-id": id,
+      title: wide ? void 0 : room2.name,
+      onMouseEnter: wide ? nameIfCut : void 0,
       onClick: () => actions.openSession(id),
       onContextMenu: (event) => {
         event.preventDefault();
@@ -17244,6 +17258,16 @@ function StopMemberWork({ entry, bot, room: room2, actions }) {
   };
   return (0, import_react46.createElement)("button", { type: "button", className: "bt-member-stop", disabled: stopping, "aria-label": `${t("Stop")} · ${bot.name}`, onClick: stop }, t("Stop"));
 }
+function StopRoomWork({ room: room2, entries: entries2, actions }) {
+  const [stopping, setStopping] = (0, import_react46.useState)(false);
+  if (!entries2.some((entry) => entry.here)) return null;
+  const stop = () => {
+    setStopping(true);
+    void Promise.resolve(actions.stopRoomWork(room2.id)).catch((error) => actions.reportError(error, "stop")).finally(() => setStopping(false));
+  };
+  const label = t("Stop all work in this group");
+  return (0, import_react46.createElement)("button", { type: "button", className: "bt-soft bt-soft-sm", disabled: stopping, "aria-label": label, title: label, onClick: stop }, t("Stop all"));
+}
 function MemberApprovals({ entry, bot, actions }) {
   if (entry?.state !== "ask") return null;
   return (0, import_react46.createElement)("div", { className: "bt-member-cards" }, entry.approvals.map((approval) => (0, import_react46.createElement)(ApprovalCard, { key: approval.id, approval, bot, actions })));
@@ -17274,6 +17298,11 @@ body[data-ds-dark-theme] .bt-mw-ask{color:#f0b84a}
 @keyframes bt-mw-seat{from{opacity:0;scale:.6}}
 @keyframes bt-mw-swap{from{opacity:0;filter:blur(4px)}}
 .bt-members{display:flex;flex-direction:column;gap:2px;margin:0 -8px}
+.bt-members-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.bt-members-head>.bt-section-title{margin:0}
+/* The button hangs over the title's line, so the list below does not move when it appears. */
+.bt-members-head>.bt-soft-sm{margin:-6px 0}
+.bt-members-head>.bt-soft-sm:disabled{opacity:.5;cursor:default}
 .bt-member{display:flex;flex-direction:column;border-radius:12px;animation:bt-rise .18s ease-out backwards}
 .bt-member-row{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 8px;border-radius:12px;transition:background-color .12s ease}
 .bt-member-row:hover{background:var(--bt-hover)}
@@ -17489,7 +17518,12 @@ function GroupOverview({ room: room2, roster, actions, usage, useWork, openSetti
     (0, import_react47.createElement)(
       "div",
       { key: "members" },
-      (0, import_react47.createElement)("div", { className: "bt-section-title" }, t("Members · {count}", { count: members.length })),
+      (0, import_react47.createElement)(
+        "div",
+        { className: "bt-members-head" },
+        (0, import_react47.createElement)("div", { className: "bt-section-title" }, t("Members · {count}", { count: members.length })),
+        (0, import_react47.createElement)(StopRoomWork, { room: room2, entries: entries2, actions })
+      ),
       (0, import_react47.createElement)("div", { className: "bt-members", role: "list" }, members.map((member) => (0, import_react47.createElement)(MemberRow, {
         key: member.id,
         member,
@@ -19767,6 +19801,9 @@ function fileLines(text) {
   const body = String(text ?? "").replace(/\n+$/, "");
   return body === "" ? [] : body.split("\n");
 }
+function editLines(text) {
+  return typeof text === "string" ? text.split(/\r?\n/) : [];
+}
 var DIFF_CELLS = 25e4;
 function lineDiff(before, after) {
   const a = fileLines(before);
@@ -19833,6 +19870,21 @@ function ProposalCard({ proposal, initialError = "", onFailure, onResolved, acti
   };
   const update = proposal.action === "update";
   const rows2 = (0, import_react50.useMemo)(() => lineDiff(update ? proposal.previous?.content : "", proposal.content), [update, proposal.previous?.content, proposal.content]);
+  if (proposal.kind === "agents") {
+    const blocks = proposal.edits.map((edit) => [
+      ...(edit.op === "add" ? [] : editLines(edit.old)).map((line) => ({ kind: "removed", line })),
+      ...(edit.op === "remove" ? [] : editLines(edit.text)).map((line) => ({ kind: "added", line }))
+    ]);
+    return (0, import_react50.createElement)(
+      "section",
+      { className: "bt-q bt-learning-card", role: "group", "aria-labelledby": titleId, "aria-busy": busy },
+      (0, import_react50.createElement)(ProposalHead, { titleId, icon: PencilIcon, title: t("AGENTS.md update") }),
+      (0, import_react50.createElement)(FileBox, { name: "AGENTS.md", path: proposal.folder, state: proposal.exists === false ? "Added" : "Modified", blocks }),
+      proposal.edits.map((edit, index) => edit.why ? (0, import_react50.createElement)("p", { className: "bt-learning-why", key: index }, edit.why) : null),
+      error ? (0, import_react50.createElement)("div", { className: "bt-learning-error", role: "alert" }, error) : null,
+      (0, import_react50.createElement)(ProposalFoot, { busy, answer })
+    );
+  }
   const oldDetail = update && typeof proposal.previous?.description === "string" && proposal.previous.description !== proposal.description ? proposal.previous.description : void 0;
   return (0, import_react50.createElement)(
     "section",
@@ -19844,16 +19896,16 @@ function ProposalCard({ proposal, initialError = "", onFailure, onResolved, acti
     (0, import_react50.createElement)(ProposalFoot, { busy, answer })
   );
 }
-function ProposalHead({ titleId, title, kind, detail, oldDetail }) {
+function ProposalHead({ titleId, icon: icon2 = MemoryIcon, title, kind, detail, oldDetail }) {
   return (0, import_react50.createElement)(
     "div",
     { className: "bt-q-head" },
-    (0, import_react50.createElement)("span", { className: "bt-learning-icon", "aria-hidden": true }, (0, import_react50.createElement)(MemoryIcon)),
+    (0, import_react50.createElement)("span", { className: "bt-learning-icon", "aria-hidden": true }, (0, import_react50.createElement)(icon2)),
     (0, import_react50.createElement)(
       "div",
       { className: "bt-q-text" },
       (0, import_react50.createElement)("p", { className: "bt-q-title", id: titleId }, title),
-      (0, import_react50.createElement)("div", { className: "bt-q-detail" }, kind),
+      kind ? (0, import_react50.createElement)("div", { className: "bt-q-detail" }, kind) : null,
       oldDetail ? (0, import_react50.createElement)("p", { className: "bt-learning-description bt-learning-old" }, (0, import_react50.createElement)("del", null, oldDetail)) : null,
       detail ? (0, import_react50.createElement)("p", { className: "bt-learning-description" }, detail) : null
     ),
@@ -19905,7 +19957,7 @@ function FileBox({ name, path, state, blocks }) {
           { className: `bt-learning-row bt-learning-${row.kind}`, key: `${blockIndex}-${rowIndex}` },
           (0, import_react50.createElement)("span", { className: "bt-learning-num", "aria-hidden": true }, row.number ?? ""),
           (0, import_react50.createElement)("span", { className: "bt-learning-sign", "aria-hidden": true }, SIGNS[row.kind]),
-          (0, import_react50.createElement)("span", { className: "bt-learning-text" }, row.line)
+          (0, import_react50.createElement)("span", { className: "bt-learning-text" }, row.line || " ")
         ))
       ])
     ),
